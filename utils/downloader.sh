@@ -41,6 +41,15 @@ function download_one
 		echo $cmd
 		rc=$?
 	else
+		if [[ -f $download_dir/$dst ]]; then
+			typeset md5_got=$(md5sum $download_dir/$dst | \
+			                  awk '{print $1}')
+			if [[ $md5_got == $md5_exp ]]; then
+				echo "INFO: skipping $dst as it does exist"
+				return 0
+			fi
+		fi
+
 		echo ">>> $cmd"
 		eval "$cmd"
 		typeset rc=$?
@@ -99,13 +108,23 @@ function download
 	return $rc
 }
 
+function yaml_setup
+{
+	[[ $PYTHONPATH == *"oyaml"* ]] && return 0
+
+	[[ ! -d /tmp/oyaml ]] && \
+		git clone https://github.com/wimglenn/oyaml.git /tmp/oyaml
+	export PYTHONPATH=/tmp/oyaml:$PYTHONPATH
+	return 0
+}
+
 f_yaml=${1?"*** YAML file, e.g. ../data/lsxx/layout01.yaml ***"}
 f_sec=${2:-"all"}
 
 f_json=$TMPDIR/$NAME.$$.json
 trap "rm -f $f_json" EXIT
 
-./yamladm tojson $f_yaml > $f_json
+yaml_setup && ./yamladm tojson $f_yaml > $f_json
 
 baseurl=$(get_baseurl $f_json)
 download $baseurl $f_json $f_sec

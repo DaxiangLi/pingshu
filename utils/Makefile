@@ -1,4 +1,5 @@
 TARGETS	= downloader \
+	  layoutadm \
 	  yamladm
 
 all: ${TARGETS}
