@@ -34,6 +34,7 @@ function download_one
 	typeset dst=$1
 	typeset src=$2
 	typeset baseurl=$3
+	typeset md5_exp=$4
 	typeset download_dir=${DOWNLOAD_DIR:-"/tmp"}
 	typeset cmd="wget -O $download_dir/$dst $baseurl/$src"
 	if [[ $DRYRUN == "yes" ]]; then
@@ -43,6 +44,16 @@ function download_one
 		echo ">>> $cmd"
 		eval "$cmd"
 		typeset rc=$?
+		if (( rc == 0 )); then
+			typeset md5_got=$(md5sum $download_dir/$dst | \
+			                  awk '{print $1}')
+			if [[ $md5_got != $md5_exp ]]; then
+				echo "Oops, $download_dir/$dst is invalid" >&2
+				echo "md5 exp: $md5_exp" >&2
+				echo "md5 got: $md5_got" >&2
+				rc=1
+			fi
+		fi
 		echo ">>>"
 	fi
 	return $rc
@@ -60,23 +71,35 @@ function download
 		get_map $f_json $f_sec > $f_map
 		while read line; do
 			typeset dst=$(echo $line | awk -F':' '{print $1}')
-			typeset src=$(echo $line | awk -F':' '{print $2}')
-			download_one $(echo $dst) $(echo $src) $baseurl
-			((rc += $?))
+			typeset src=$(echo $line | awk -F':' '{print $2}' | \
+		                      awk '{print $1}')
+			typeset md5=$(echo $line | awk -F':' '{print $2}' | \
+		                      awk '{print $2}')
+			download_one $(echo $dst) $(echo $src) $baseurl $md5
+			if (( $? != 0 )); then
+				echo "ERROR: fail to download file $dst" >&2
+				((rc += 1))
+			fi
 		done < $f_map
 		rm -f $f_map
 	else
 		typeset s_map=$(get_map $f_json $f_sec)
 		typeset dst=$(echo $s_map | awk -F':' '{print $1}')
-		typeset src=$(echo $s_map | awk -F':' '{print $2}')
-		download_one $(echo $dst) $(echo $src) $baseurl
-		typeset rc=$?
+		typeset src=$(echo $s_map | awk -F':' '{print $2}' | \
+		              awk '{print $1}')
+		typeset md5=$(echo $s_map | awk -F':' '{print $2}' | \
+		              awk '{print $2}')
+		download_one $(echo $dst) $(echo $src) $baseurl $md5
+		if (( $? != 0 )); then
+			echo "ERROR: fail to download file $dst" >&2
+			rc=1
+		fi
 	fi
 
 	return $rc
 }
 
-f_yaml=${1?"*** YAML file, e.g. ../data/lsxx/layout01.yaml"}
+f_yaml=${1?"*** YAML file, e.g. ../data/lsxx/layout01.yaml ***"}
 f_sec=${2:-"all"}
 
 f_json=$TMPDIR/$NAME.$$.json
