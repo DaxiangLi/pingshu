@@ -1,4 +1,6 @@
 TARGETS	= downloader \
+	  get_mp3_url \
+	  create_mp3_urls_md \
 	  layoutadm \
 	  yamladm
 

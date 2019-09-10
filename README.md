@@ -1,3 +1,3 @@
 # PingShu Downloader
 
-* lsxx: http://www.shantianfang.com.cn/pingshu/78/
+* lsxx: http://www.wotingpingshu.com/pingshu/shantianfang/757/ 
